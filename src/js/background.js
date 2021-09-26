@@ -217,23 +217,9 @@ async function changeActiveGroupBy(offset) {
   await toggleVisibleTabs(activeGroup, true);
 }
 
-async function triggerCommand(command) {
-  const options = await loadOptions();
-
-  if (options.shortcut[command].disabled) {
-    // Doesn't execute disabled command
-    return;
-  }
-  if (command === 'activate-next-group') {
-    await changeActiveGroupBy(1);
-  } else if (command === 'activate-previous-group') {
-    await changeActiveGroupBy(-1);
-  }
-}
-
 /** Open the Panorama View tab, or return to the last open tab if Panorama View is currently open */
 async function toggleView() {
-  const extTabs = await browser.tabs.query({ url: browser.extension.getURL('view.html'), currentWindow: true });
+  const extTabs = await browser.tabs.query({ url: browser.runtime.getURL('view.html'), currentWindow: true });
   if (extTabs.length > 0) {
     const currentTab = (await browser.tabs.query({ active: true, currentWindow: true }))[0];
     // switch to last accessed tab in window
@@ -253,6 +239,28 @@ async function toggleView() {
   } else { // if there is no Panorama View tab, make one
     window.backgroundState.openingView = true;
     await browser.tabs.create({ url: '/view.html', active: true });
+  }
+}
+
+async function triggerCommand(command) {
+  const options = await loadOptions();
+
+  if (options?.shortcut?.[command]?.disabled) {
+    // Doesn't execute disabled command
+    return;
+  }
+  switch (command) {
+    case 'activate-next-group':
+      await changeActiveGroupBy(1);
+      break;
+    case 'activate-previous-group':
+      await changeActiveGroupBy(-1);
+      break;
+    case 'toggle-panorama-view':
+      await toggleView();
+      break;
+    default:
+      break;
   }
 }
 
@@ -471,12 +479,19 @@ window.refreshView = async function refreshView() {
   browser.tabs.onActivated.addListener(tabActivated);
 };
 
-// TODO: Remove? Is this used?
 function handleMessage(message, sender) { // eslint-disable-line no-unused-vars
-  if (message === 'activate-next-group') {
-    triggerCommand('activate-next-group');
-  } else if (message === 'activate-previous-group') {
-    triggerCommand('activate-previous-group');
+  switch (message) {
+    case 'activate-next-group':
+      triggerCommand('activate-next-group');
+      break;
+    case 'activate-previous-group':
+      triggerCommand('activate-previous-group');
+      break;
+    case 'toggle-panorama-view':
+      triggerCommand('toggle-panorama-view');
+      break;
+    default:
+      break;
   }
 }
 
